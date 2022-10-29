@@ -1,0 +1,33 @@
+version: "3.5"
+services:
+  thumbor:
+    #image: thumbororg/thumbor
+    build:
+      context: .
+      args:
+        PYTHON_VERSION: 3.9
+        THUMBOR_VERSION: 7.2.1
+    volumes:
+      - ${MEDIA:-./media}:/storage/media
+      - ./thumbor.conf:/etc/thumbor.conf
+    restart: unless-stopped
+    environment:
+      - FILE_LOADER_ROOT_PATH=${FILE_LOADER_ROOT_PATH:-/storage/media}
+      - LOADER=thumbor.loaders.file_loader
+      - STORAGE=thumbor.storage.no_storage
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.thumbor.rule=PathPrefix(`/thumbor`)"
+      - "traefik.http.routers.thumbor.entrypoints=https"
+      - "traefik.http.routers.thumbor.middlewares=thumbor-stripprefix"
+      - "traefik.http.middlewares.thumbor-stripprefix.stripprefix.prefixes=/thumbor,/thumbnails"
+      - "traefik.http.routers.thumbor.tls=true"
+      - "traefik.http.routers.thumbor.service=thumbor-backend"
+      - "traefik.http.services.thumbor-backend.loadbalancer.server.port=8888"
+    networks:
+      - proxy
+
+networks:
+  proxy:
+    external:
+      name: proxy
